@@ -8,6 +8,7 @@ def check_flags(tuning_functions, default_stim):
     unique_values = set()
 
     for dictionary in tuning_functions:
+        dictionary.keys()
         values = dictionary['tuning_type']
         current_var = dictionary['default']
         current_var = [sublist[0] for sublist in current_var]
@@ -33,7 +34,7 @@ def check_flags(tuning_functions, default_stim):
 
 
 def combine_config_strings(config_list, flag_list):
-    full_config = ''
+    full_config = '" '
 
     for flag_index, flag in enumerate(flag_list):
         print(f'current_flag = {flag}')
@@ -51,7 +52,7 @@ def combine_config_strings(config_list, flag_list):
                 if current_config:
                     var_config += current_config[0][1]
         full_config += var_config
-
+    full_config += '"'
     return full_config
 
 
@@ -95,7 +96,6 @@ class TuningFunction:
             random.shuffle(self.combo_list)
         elif tuning_params['param_type'] == 'list':
             for tuning_index in range(len(self.tuning_type)):
-                #self.iv[tuning_index] = list(itertools.product(*tuning_params['values'][tuning_index]))
                 self.iv[tuning_index] = tuning_params['values'][tuning_index]
             self.combo_list = list(itertools.product(*self.iv))
             random.shuffle(self.combo_list)
@@ -107,11 +107,12 @@ class TuningFunction:
 
         for element_id in range(len(self.combo_list[0])):
             new_list = [element[element_id] for element in self.combo_list]
-
-            # result_string = ', '.join(', '.join(str(elem) for elem in sub_tuple) for sub_tuple in new_list)
             result_string = ', '.join(str(item) for item in new_list)
+            result_string = result_string.replace(" ", "")
             n = len(new_list)
             self.config_string += f"-{self.tuning_type[element_id]} {result_string} "
+
+
         if self.default_params is not None:
 
             for iv_index in range(len(self.default_params)):
@@ -121,6 +122,7 @@ class TuningFunction:
                 current_values = [current_values] * n
                 new_string = ", ".join(str(element) for element in current_values)
                 self.config_string += f"-{current_flag} {new_string} "
+
         self.config_string = self.config_string.replace("[", "").replace("]", "")
         self.config_string = self.config_string.replace("(", "").replace(")", "")
 

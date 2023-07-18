@@ -34,7 +34,7 @@ def check_flags(tuning_functions, default_stim):
 
 
 def combine_config_strings(config_list, flag_list):
-    full_config = '" '
+    full_config = '"'
 
     for flag_index, flag in enumerate(flag_list):
         print(f'current_flag = {flag}')
@@ -44,16 +44,81 @@ def combine_config_strings(config_list, flag_list):
             if var_config == '':
                 flag_pattern = r'(-{1}' + flag + r' [^-]*)'
                 current_config = re.findall(flag_pattern, config)
+                breakpoint()
+                # current_config = current_config.replace(" ", "")
+
                 if current_config:
+                    if current_config[0][-1].isspace():
+                        current_config[0] = current_config[0].rstrip()
                     var_config += current_config[0]
+
             else:
                 flag_pattern = r'(-{1}' + flag + r')( [^-]*)'
                 current_config = re.findall(flag_pattern, config)
+
+                current_config = ',' + current_config[0][1]
+                current_config = current_config.replace(" ", "")
                 if current_config:
-                    var_config += current_config[0][1]
-        full_config += var_config
-    full_config += '"'
+                    var_config += current_config
+        print(f'var_config =  {var_config}')
+
+        if var_config != '':
+            var_config = ' ' + var_config
+            full_config += var_config
+
+    full_config += ' "'
     return full_config
+
+
+def randomize_trials(input_string, condition_string, var_length):
+
+    # Define the regex pattern
+    pattern = r"(-{1,2}\w+)\s+([^-\s]+)"
+    # Find all matches using the pattern
+    matches = re.findall(pattern, input_string)
+
+    # Create a dictionary to store flag-value pairs
+    flag_values = {}
+
+    # Group the matches by flag
+    for match in matches:
+        flag = match[0]
+        values = match[1].split(',')
+        values = [values[i:i + n] for i in range(0, len(values), var_length)]
+
+        if flag in flag_values:
+            flag_values[flag].append(values)
+        else:
+            flag_values[flag] = [values]
+
+    # Randomize the order of values within each flag
+    breakpoint()
+    num_trials = len(values)
+    indices = np.random.permutation(num_trials)
+    condition_string = [condition_string[i] for i in indices]
+    for flag in flag_values:
+        flag_values[flag] = [flag_values[flag][0][i] for i in indices]
+    # Create a new string with randomized flag-value pairs
+    new_string = '" '
+    for flag in flag_values:
+        values_list = flag_values[flag]
+        values_str = ', '.join(item for item in values_list)
+        values_str = values_str.replace(" ", "")
+        new_string += f"{flag} {values_str} "
+
+    new_string += '"'
+    # Print the randomized string
+    return new_string, condition_string
+
+
+def flatten_list(lst):
+    flattened = []
+    for item in lst:
+        if isinstance(item, list):
+            flattened.extend(flatten_list(item))
+        else:
+            flattened.append(item)
+    return flattened
 
 
 class Bakers:
@@ -84,6 +149,7 @@ class TuningFunction:
         self.config_string = ''
         self.tuning_params = tuning_params['param_type']
         self.default_params = tuning_params['default']
+
         if tuning_params['param_type'] == 'param':
             for tuning_index in range(len(self.tuning_type)):
                 min_value = tuning_params['values'][tuning_index][0]
@@ -93,7 +159,9 @@ class TuningFunction:
                 self.iv[tuning_index] = np.arange(min_value, max_value+step, step).tolist()
                 self.iv[tuning_index] = [x for x in self.iv[tuning_index]]
             self.combo_list = list(itertools.product(*self.iv))
+
             random.shuffle(self.combo_list)
+
         elif tuning_params['param_type'] == 'list':
             for tuning_index in range(len(self.tuning_type)):
                 self.iv[tuning_index] = tuning_params['values'][tuning_index]
@@ -101,30 +169,30 @@ class TuningFunction:
             random.shuffle(self.combo_list)
         else:
             raise ValueError("Invalid condition found")
+        self.var_length = len(self.iv[0])
+        self.condition = tuning_params['condition'] * len(self.combo_list)
         self.generate_config_string()
 
     def generate_config_string(self):
-
         for element_id in range(len(self.combo_list[0])):
             new_list = [element[element_id] for element in self.combo_list]
-            result_string = ', '.join(str(item) for item in new_list)
+            if isinstance(new_list[0], list):
+                new_list = flatten_list(new_list)
+            result_string = ', '.join("{:.2f}".format(item) for item in new_list)
             result_string = result_string.replace(" ", "")
             n = len(new_list)
             self.config_string += f"-{self.tuning_type[element_id]} {result_string} "
 
-
         if self.default_params is not None:
-
             for iv_index in range(len(self.default_params)):
-
                 current_flag = self.default_params[iv_index][0]
                 current_values = self.default_params[iv_index][1]
                 current_values = [current_values] * n
                 new_string = ", ".join(str(element) for element in current_values)
+                new_string = new_string.replace(" ", "")
                 self.config_string += f"-{current_flag} {new_string} "
 
         self.config_string = self.config_string.replace("[", "").replace("]", "")
         self.config_string = self.config_string.replace("(", "").replace(")", "")
-
 
 

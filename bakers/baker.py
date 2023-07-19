@@ -44,7 +44,7 @@ def combine_config_strings(config_list, flag_list):
             if var_config == '':
                 flag_pattern = r'(-{1}' + flag + r' [^-]*)'
                 current_config = re.findall(flag_pattern, config)
-                breakpoint()
+                # breakpoint()
                 # current_config = current_config.replace(" ", "")
 
                 if current_config:
@@ -81,25 +81,27 @@ def randomize_trials(input_string, condition_string, var_length):
     flag_values = {}
 
     # Group the matches by flag
-    for match in matches:
+    for match, current_var_length in zip(matches, var_length):
         flag = match[0]
         values = match[1].split(',')
-        values = [values[i:i + n] for i in range(0, len(values), var_length)]
+        values = [values[i:i + current_var_length] for i in range(0, len(values), current_var_length)]
 
         if flag in flag_values:
             flag_values[flag].append(values)
         else:
-            flag_values[flag] = [values]
+            flag_values[flag] = values
 
     # Randomize the order of values within each flag
-    breakpoint()
     num_trials = len(values)
     indices = np.random.permutation(num_trials)
     condition_string = [condition_string[i] for i in indices]
     for flag in flag_values:
-        flag_values[flag] = [flag_values[flag][0][i] for i in indices]
+
+        flag_values[flag] = [flag_values[flag][i] for i in indices]
     # Create a new string with randomized flag-value pairs
+    flag_values[flag] = flatten_list(flag_values[flag])
     new_string = '" '
+
     for flag in flag_values:
         values_list = flag_values[flag]
         values_str = ', '.join(item for item in values_list)
@@ -169,7 +171,7 @@ class TuningFunction:
             random.shuffle(self.combo_list)
         else:
             raise ValueError("Invalid condition found")
-        self.var_length = len(self.iv[0])
+        self.var_length = len(self.iv[0][0])
         self.condition = tuning_params['condition'] * len(self.combo_list)
         self.generate_config_string()
 

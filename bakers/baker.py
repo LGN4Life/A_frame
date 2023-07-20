@@ -2,6 +2,7 @@ import numpy as np
 import itertools
 import random
 import re
+import math
 
 
 def check_flags(tuning_functions, default_stim):
@@ -81,6 +82,7 @@ def randomize_trials(input_string, condition_string, var_length):
     flag_values = {}
 
     # Group the matches by flag
+
     for match, current_var_length in zip(matches, var_length):
         flag = match[0]
         values = match[1].split(',')
@@ -98,8 +100,9 @@ def randomize_trials(input_string, condition_string, var_length):
     for flag in flag_values:
 
         flag_values[flag] = [flag_values[flag][i] for i in indices]
+        flag_values[flag] = flatten_list(flag_values[flag])
+
     # Create a new string with randomized flag-value pairs
-    flag_values[flag] = flatten_list(flag_values[flag])
     new_string = '" '
 
     for flag in flag_values:
@@ -121,6 +124,22 @@ def flatten_list(lst):
         else:
             flattened.append(item)
     return flattened
+
+
+def sweep_edge(leading_position, width, direction):
+    # for each combo of parameters (leading_position, width and direction) calculate the center
+    # location (x and y) for a 2d grating
+    center_position = [0]*len(width)
+    # calculate x displacement based on direction and width
+    for trial_index in range(len(width)):
+        angle_rad = math.radians(direction[trial_index])
+        # Calculate the sine of the angle
+        displace_x = math.sin(angle_rad) * width[trial_index]/2
+        displace_y = -1*math.cos(angle_rad) * width[trial_index]/2
+        center_position[trial_index] = [leading_position[trial_index][0]+displace_x,
+                                        leading_position[trial_index][1]+displace_y]
+    #print(f"displace_x = {displace_x}, displacement_y = {displace_y}, center_position = {center_position}")
+    return center_position
 
 
 class Bakers:
@@ -171,7 +190,13 @@ class TuningFunction:
             random.shuffle(self.combo_list)
         else:
             raise ValueError("Invalid condition found")
-        self.var_length = len(self.iv[0][0])
+        self.var_length = []
+        for iv in self.iv:
+            print(iv)
+            if type(iv[0]) == list:
+                self.var_length.append(len(iv[0]))
+            else:
+                self.var_length.append(1)
         self.condition = tuning_params['condition'] * len(self.combo_list)
         self.generate_config_string()
 

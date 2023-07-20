@@ -126,20 +126,30 @@ def flatten_list(lst):
     return flattened
 
 
-def sweep_edge(leading_position, width, direction):
+def sweep_edge(leading_position, width, direction, sf):
     # for each combo of parameters (leading_position, width and direction) calculate the center
     # location (x and y) for a 2d grating
     center_position = [0]*len(width)
-    # calculate x displacement based on direction and width
+    center_phase = [0] * len(width)
+
+
+
+
     for trial_index in range(len(width)):
+        # calculate x displacement based on direction and width
         angle_rad = math.radians(direction[trial_index])
         # Calculate the sine of the angle
         displace_x = math.sin(angle_rad) * width[trial_index]/2
         displace_y = -1*math.cos(angle_rad) * width[trial_index]/2
         center_position[trial_index] = [leading_position[trial_index][0]+displace_x,
                                         leading_position[trial_index][1]+displace_y]
-    #print(f"displace_x = {displace_x}, displacement_y = {displace_y}, center_position = {center_position}")
-    return center_position
+        # calculate center phase in order to keep the phase of the leading edge constant
+        # across changes in width
+        wave_cycles = width[trial_index] / sf
+        leading_edge_phase = 2*math.pi*wave_cycles/2
+        center_phase[trial_index] = 2*math.pi - leading_edge_phase
+
+    return center_position, center_phase
 
 
 class Bakers:
@@ -188,8 +198,16 @@ class TuningFunction:
                 self.iv[tuning_index] = tuning_params['values'][tuning_index]
             self.combo_list = list(itertools.product(*self.iv))
             random.shuffle(self.combo_list)
+        elif tuning_params['param_type'] == 'combo':
+            for tuning_index  in range(len(tuning_params['values'])):
+                self.iv[tuning_index] = [tuning_params['values'][trial_index][tuning_index] for trial_index in range(len(tuning_params['values']))]
+
+            self.combo_list = list(zip(*self.iv))
+
+
         else:
             raise ValueError("Invalid condition found")
+        breakpoint()
         self.var_length = []
         for iv in self.iv:
             print(iv)
@@ -205,12 +223,14 @@ class TuningFunction:
             new_list = [element[element_id] for element in self.combo_list]
             if isinstance(new_list[0], list):
                 new_list = flatten_list(new_list)
+            breakpoint()
             result_string = ', '.join("{:.2f}".format(item) for item in new_list)
             result_string = result_string.replace(" ", "")
             n = len(new_list)
             self.config_string += f"-{self.tuning_type[element_id]} {result_string} "
 
         if self.default_params is not None:
+
             for iv_index in range(len(self.default_params)):
                 current_flag = self.default_params[iv_index][0]
                 current_values = self.default_params[iv_index][1]
@@ -218,7 +238,10 @@ class TuningFunction:
                 new_string = ", ".join(str(element) for element in current_values)
                 new_string = new_string.replace(" ", "")
                 self.config_string += f"-{current_flag} {new_string} "
-
+                if type(current_values[0]) == list:
+                    self.var_length.append(len(current_values[0]))
+                else:
+                    self.var_length.append(1)
         self.config_string = self.config_string.replace("[", "").replace("]", "")
         self.config_string = self.config_string.replace("(", "").replace(")", "")
 

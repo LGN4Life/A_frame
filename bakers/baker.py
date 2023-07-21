@@ -45,7 +45,7 @@ def combine_config_strings(config_list, flag_list):
             if var_config == '':
                 flag_pattern = r'(-{1}' + flag + r' [^-]*)'
                 current_config = re.findall(flag_pattern, config)
-                # breakpoint()
+
                 # current_config = current_config.replace(" ", "")
 
                 if current_config:
@@ -175,7 +175,7 @@ class Stimulus:
 
 class TuningFunction:
     def __init__(self, tuning_params):
-        self.iv = list(range(len(tuning_params['tuning_type'])))
+        self.iv = [None]*len(tuning_params['values'][0])
         self.tuning_type = tuning_params['tuning_type']
         self.config_string = ''
         self.tuning_params = tuning_params['param_type']
@@ -199,15 +199,13 @@ class TuningFunction:
             self.combo_list = list(itertools.product(*self.iv))
             random.shuffle(self.combo_list)
         elif tuning_params['param_type'] == 'combo':
-            for tuning_index  in range(len(tuning_params['values'])):
+            for tuning_index  in range(len(tuning_params['values'][0])):
                 self.iv[tuning_index] = [tuning_params['values'][trial_index][tuning_index] for trial_index in range(len(tuning_params['values']))]
-
             self.combo_list = list(zip(*self.iv))
 
 
         else:
             raise ValueError("Invalid condition found")
-        breakpoint()
         self.var_length = []
         for iv in self.iv:
             print(iv)
@@ -215,6 +213,7 @@ class TuningFunction:
                 self.var_length.append(len(iv[0]))
             else:
                 self.var_length.append(1)
+
         self.condition = tuning_params['condition'] * len(self.combo_list)
         self.generate_config_string()
 
@@ -223,7 +222,6 @@ class TuningFunction:
             new_list = [element[element_id] for element in self.combo_list]
             if isinstance(new_list[0], list):
                 new_list = flatten_list(new_list)
-            breakpoint()
             result_string = ', '.join("{:.2f}".format(item) for item in new_list)
             result_string = result_string.replace(" ", "")
             n = len(new_list)

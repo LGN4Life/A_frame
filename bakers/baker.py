@@ -43,26 +43,27 @@ def combine_config_strings(config_list, flag_list):
         for tc_index, config in enumerate(config_list):
 
             if var_config == '':
-                flag_pattern = r'(-{1}' + flag + r' [^-]*)'
-                current_config = re.findall(flag_pattern, config)
+                flag_pattern = r'(-{1}' + flag + r'(\s?-?\d+\.?\d*,?)*)'
+                current_config = re.findall(flag_pattern, config)[0][0]
+                current_config = current_config.replace(" ", "")
+                current_config = current_config.replace(r'-' + flag, r'-' + flag + " ")
 
-                # current_config = current_config.replace(" ", "")
+
 
                 if current_config:
-                    if current_config[0][-1].isspace():
-                        current_config[0] = current_config[0].rstrip()
-                    var_config += current_config[0]
+                    if current_config[-1].isspace():
+                        current_config = current_config.rstrip()
+                    var_config += current_config
 
             else:
-                flag_pattern = r'(-{1}' + flag + r')( [^-]*)'
+                flag_pattern = r'(-{1}' + flag + r'(\s?-?\d+\.?\d*,?)*)'
                 current_config = re.findall(flag_pattern, config)
-
+                breakpoint()
                 current_config = ',' + current_config[0][1]
                 current_config = current_config.replace(" ", "")
                 if current_config:
                     var_config += current_config
         print(f'var_config =  {var_config}')
-
         if var_config != '':
             var_config = ' ' + var_config
             full_config += var_config
@@ -74,18 +75,20 @@ def combine_config_strings(config_list, flag_list):
 def randomize_trials(input_string, condition_string, var_length):
 
     # Define the regex pattern
-    pattern = r"(-{1,2}\w+)\s+([^-\s]+)"
+    # pattern = r'(-{1,2}\D+)(-?\d+\.?\d*,?)*'
+    pattern = r'(--sweep (.*?))(?=-\D|$)'
     # Find all matches using the pattern
     matches = re.findall(pattern, input_string)
-
     # Create a dictionary to store flag-value pairs
     flag_values = {}
 
     # Group the matches by flag
-
+    breakpoint()
     for match, current_var_length in zip(matches, var_length):
+        match = match[0]
         flag = match[0]
         values = match[1].split(',')
+        breakpoint()
         values = [values[i:i + current_var_length] for i in range(0, len(values), current_var_length)]
 
         if flag in flag_values:
@@ -97,10 +100,13 @@ def randomize_trials(input_string, condition_string, var_length):
     num_trials = len(values)
     indices = np.random.permutation(num_trials)
     condition_string = [condition_string[i] for i in indices]
-    for flag in flag_values:
 
+    for flag in flag_values:
+        print(f"current flag  = {flag}")
+        breakpoint()
         flag_values[flag] = [flag_values[flag][i] for i in indices]
         flag_values[flag] = flatten_list(flag_values[flag])
+
 
     # Create a new string with randomized flag-value pairs
     new_string = '" '
@@ -126,7 +132,7 @@ def flatten_list(lst):
     return flattened
 
 
-def sweep_edge(leading_position, width, direction, sf):
+def sweep_edge(leading_position, leading_phase, width, direction, sf):
     # for each combo of parameters (leading_position, width and direction) calculate the center
     # location (x and y) for a 2d grating
     center_position = [0]*len(width)
@@ -139,15 +145,15 @@ def sweep_edge(leading_position, width, direction, sf):
         # calculate x displacement based on direction and width
         angle_rad = math.radians(direction[trial_index])
         # Calculate the sine of the angle
-        displace_x = math.sin(angle_rad) * width[trial_index]/2
-        displace_y = -1*math.cos(angle_rad) * width[trial_index]/2
+        displace_x = np.sin(angle_rad) * width[trial_index][0]/2
+        displace_y = -1*np.cos(angle_rad) * width[trial_index][1]/2
         center_position[trial_index] = [leading_position[trial_index][0]+displace_x,
                                         leading_position[trial_index][1]+displace_y]
         # calculate center phase in order to keep the phase of the leading edge constant
         # across changes in width
-        wave_cycles = width[trial_index] / sf
-        leading_edge_phase = 2*math.pi*wave_cycles/2
-        center_phase[trial_index] = 2*math.pi - leading_edge_phase
+        leading_edge_phase = 2*np.pi*width[trial_index]
+        center_phase[trial_index] = 2*np.pi - leading_edge_phase
+        center_phase[trial_index] = center_phase[trial_index].tolist()
 
     return center_position, center_phase
 
@@ -207,6 +213,7 @@ class TuningFunction:
         else:
             raise ValueError("Invalid condition found")
         self.var_length = []
+
         for iv in self.iv:
             print(iv)
             if type(iv[0]) == list:

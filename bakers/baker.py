@@ -68,7 +68,7 @@ def combine_config_strings(config_list, flag_list):
             var_config = ' ' + var_config
             full_config += var_config
 
-    full_config += ' "'
+    # full_config += ' "'
     return full_config
 
 
@@ -76,19 +76,20 @@ def randomize_trials(input_string, condition_string, var_length):
 
     # Define the regex pattern
     # pattern = r'(-{1,2}\D+)(-?\d+\.?\d*,?)*'
-    pattern = r'(--sweep (.*?))(?=-\D|$)'
+    pattern = r'(-{1,2}\D+ .*?)(?=-\D|$)'
     # Find all matches using the pattern
     matches = re.findall(pattern, input_string)
     # Create a dictionary to store flag-value pairs
     flag_values = {}
 
     # Group the matches by flag
-    breakpoint()
+    flag_pattern = r'(-{1,2}\D+)(.+)'
     for match, current_var_length in zip(matches, var_length):
-        match = match[0]
-        flag = match[0]
-        values = match[1].split(',')
-        breakpoint()
+
+        flag_matches = re.findall(flag_pattern, match)
+        flag = flag_matches[0][0]
+        values = flag_matches[0][1].split(',')
+
         values = [values[i:i + current_var_length] for i in range(0, len(values), current_var_length)]
 
         if flag in flag_values:
@@ -97,13 +98,13 @@ def randomize_trials(input_string, condition_string, var_length):
             flag_values[flag] = values
 
     # Randomize the order of values within each flag
+
     num_trials = len(values)
     indices = np.random.permutation(num_trials)
     condition_string = [condition_string[i] for i in indices]
 
     for flag in flag_values:
         print(f"current flag  = {flag}")
-        breakpoint()
         flag_values[flag] = [flag_values[flag][i] for i in indices]
         flag_values[flag] = flatten_list(flag_values[flag])
 
@@ -116,6 +117,8 @@ def randomize_trials(input_string, condition_string, var_length):
         values_str = ', '.join(item for item in values_list)
         values_str = values_str.replace(" ", "")
         new_string += f"{flag} {values_str} "
+
+
 
     new_string += '"'
     # Print the randomized string

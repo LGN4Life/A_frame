@@ -45,25 +45,22 @@ def combine_config_strings(config_list, flag_list):
             if var_config == '':
                 flag_pattern = r'(-{1}' + flag + r'(\s?-?\d+\.?\d*,?)*)'
                 current_config = re.findall(flag_pattern, config)[0][0]
-                current_config = current_config.replace(" ", "")
-                current_config = current_config.replace(r'-' + flag, r'-' + flag + " ")
-
-
-
                 if current_config:
-                    if current_config[-1].isspace():
-                        current_config = current_config.rstrip()
                     var_config += current_config
 
             else:
-                flag_pattern = r'(-{1}' + flag + r'(\s?-?\d+\.?\d*,?)*)'
-                current_config = re.findall(flag_pattern, config)
-                breakpoint()
-                current_config = ',' + current_config[0][1]
-                current_config = current_config.replace(" ", "")
+                flag_pattern = r'(-{1}' + flag + ')' + r'(\s?-?\d+\.?\d*,?)*'
+                # pattern = r'(-{1,2}\D+ .*?)(?=-\D|$)'
+                current_flag = r'-{1}' + flag
+                pattern = current_flag + r'(.*?)(?=-\D|$)'
+                current_config = re.findall(pattern, config)
+                current_config = ',' + current_config[0]
+                current_config = current_config.replace(" ","")
                 if current_config:
                     var_config += current_config
+        # breakpoint()
         print(f'var_config =  {var_config}')
+
         if var_config != '':
             var_config = ' ' + var_config
             full_config += var_config
@@ -88,6 +85,7 @@ def randomize_trials(input_string, condition_string, var_length):
 
         flag_matches = re.findall(flag_pattern, match)
         flag = flag_matches[0][0]
+        flag = flag.rstrip()
         values = flag_matches[0][1].split(',')
 
         values = [values[i:i + current_var_length] for i in range(0, len(values), current_var_length)]
@@ -115,9 +113,9 @@ def randomize_trials(input_string, condition_string, var_length):
     for flag in flag_values:
         values_list = flag_values[flag]
         values_str = ', '.join(item for item in values_list)
+
         values_str = values_str.replace(" ", "")
         new_string += f"{flag} {values_str} "
-
 
 
     new_string += '"'
@@ -168,14 +166,15 @@ class Bakers:
 
 class Stimulus:
     def __init__(self, **kwargs):
-        self.C = kwargs.get('C', 100)
-        self.A = kwargs.get('A', 5)
-        self.S = kwargs.get('S', 1)
-        self.T = kwargs.get('T', 5)
-        self.P = kwargs.get('P', 0)
-        self.Z = kwargs.get('Z', [0, 0])
-        self.sweep = kwargs.get('sweep', [1, 0, 5])
-        self.wh = kwargs.get('wh', [5, 5])
+        self.C = kwargs.get('C', 100.0)
+        self.A = kwargs.get('A', 5.0)
+        self.S = kwargs.get('S', 1.0)
+        self.T = kwargs.get('T', 5.0)
+        self.O = kwargs.get('0', 90.0)
+        self.P = kwargs.get('P', 0.0)
+        self.Z = kwargs.get('Z', [0.0, 0.0])
+        self.sweep = kwargs.get('sweep', [1.0, 0.0, 5.0])
+        self.wh = kwargs.get('wh', [5.0, 5.0])
 
     def print(self):
         for attr, value in self.__dict__.items():
@@ -184,11 +183,12 @@ class Stimulus:
 
 class TuningFunction:
     def __init__(self, tuning_params):
-        self.iv = [None]*len(tuning_params['values'][0])
+        self.iv = [None]*len(tuning_params['values'])
         self.tuning_type = tuning_params['tuning_type']
         self.config_string = ''
         self.tuning_params = tuning_params['param_type']
         self.default_params = tuning_params['default']
+        self.var_length = tuning_params['var_length']
 
         if tuning_params['param_type'] == 'param':
             for tuning_index in range(len(self.tuning_type)):
@@ -205,8 +205,10 @@ class TuningFunction:
         elif tuning_params['param_type'] == 'list':
             for tuning_index in range(len(self.tuning_type)):
                 self.iv[tuning_index] = tuning_params['values'][tuning_index]
+            # breakpoint()
             self.combo_list = list(itertools.product(*self.iv))
             random.shuffle(self.combo_list)
+
         elif tuning_params['param_type'] == 'combo':
             for tuning_index  in range(len(tuning_params['values'][0])):
                 self.iv[tuning_index] = [tuning_params['values'][trial_index][tuning_index] for trial_index in range(len(tuning_params['values']))]
@@ -215,14 +217,7 @@ class TuningFunction:
 
         else:
             raise ValueError("Invalid condition found")
-        self.var_length = []
 
-        for iv in self.iv:
-            print(iv)
-            if type(iv[0]) == list:
-                self.var_length.append(len(iv[0]))
-            else:
-                self.var_length.append(1)
 
         self.condition = tuning_params['condition'] * len(self.combo_list)
         self.generate_config_string()
@@ -252,5 +247,6 @@ class TuningFunction:
                     self.var_length.append(1)
         self.config_string = self.config_string.replace("[", "").replace("]", "")
         self.config_string = self.config_string.replace("(", "").replace(")", "")
+
 
 

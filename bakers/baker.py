@@ -69,7 +69,7 @@ def combine_config_strings(config_list, flag_list):
     return full_config
 
 
-def randomize_trials(input_string, condition_string, var_length):
+def randomize_trials(input_string, condition_string, var_length, num_trials):
 
     # Define the regex pattern
     # pattern = r'(-{1,2}\D+)(-?\d+\.?\d*,?)*'
@@ -80,10 +80,12 @@ def randomize_trials(input_string, condition_string, var_length):
     flag_values = {}
 
     # Group the matches by flag
-    flag_pattern = r'(-{1,2}\D+)(.+)'
+    flag_pattern = r'(-{1,2}[^-\d])(.+)'
+
     for match, current_var_length in zip(matches, var_length):
 
         flag_matches = re.findall(flag_pattern, match)
+
         flag = flag_matches[0][0]
         flag = flag.rstrip()
         values = flag_matches[0][1].split(',')
@@ -97,7 +99,6 @@ def randomize_trials(input_string, condition_string, var_length):
 
     # Randomize the order of values within each flag
 
-    num_trials = len(values)
     indices = np.random.permutation(num_trials)
     condition_string = [condition_string[i] for i in indices]
 
@@ -119,6 +120,7 @@ def randomize_trials(input_string, condition_string, var_length):
 
 
     new_string += '"'
+
     # Print the randomized string
     return new_string, condition_string
 
@@ -200,6 +202,7 @@ class TuningFunction:
                 self.iv[tuning_index] = [x for x in self.iv[tuning_index]]
             self.combo_list = list(itertools.product(*self.iv))
 
+
             random.shuffle(self.combo_list)
 
         elif tuning_params['param_type'] == 'list':
@@ -210,15 +213,20 @@ class TuningFunction:
             random.shuffle(self.combo_list)
 
         elif tuning_params['param_type'] == 'combo':
-            for tuning_index  in range(len(tuning_params['values'][0])):
-                self.iv[tuning_index] = [tuning_params['values'][trial_index][tuning_index] for trial_index in range(len(tuning_params['values']))]
+            for tuning_index  in range(len(tuning_params['values'])):
+
+                #self.iv[tuning_index] = [tuning_params['values'][trial_index][tuning_index] for trial_index in range(len(tuning_params['values']))]
+                self.iv[tuning_index] = tuning_params['values'][tuning_index]
+
             self.combo_list = list(zip(*self.iv))
+            # breakpoint()
 
 
         else:
             raise ValueError("Invalid condition found")
-
-
+        # print(len(self.combo_list ))
+        # breakpoint()
+        self.num_trials = len(self.combo_list)
         self.condition = tuning_params['condition'] * len(self.combo_list)
         self.generate_config_string()
 

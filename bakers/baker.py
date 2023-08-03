@@ -111,6 +111,7 @@ def randomize_trials(input_string, condition_string, var_list, num_trials):
     for flag in flag_values:
         print(f"current flag  = {flag}")
         print(f"flag_values =  {flag_values[flag]}")
+        temp = [i for i in indices]
         flag_values[flag] = [flag_values[flag][i] for i in indices]
         flag_values[flag] = flatten_list(flag_values[flag])
 
@@ -142,7 +143,7 @@ def flatten_list(lst):
     return flattened
 
 
-def sweep_edge(leading_position, leading_phase, width, direction, sf):
+def sweep_edge(leading_position, leading_phase, width, direction, sf, orientation):
     # for each combo of parameters (leading_position, width and direction) calculate the center
     # location (x and y) for a 2d grating
     center_position = [0]*len(width)
@@ -153,18 +154,23 @@ def sweep_edge(leading_position, leading_phase, width, direction, sf):
 
     for trial_index in range(len(width)):
         # calculate x displacement based on direction and width
-        angle_rad = math.radians(direction[trial_index])
+        direction_rad = math.radians(direction[trial_index])
+
+        leading_phase[trial_index] = math.radians(leading_phase[trial_index])
+        ori_rad = math.radians(orientation[trial_index])
         # Calculate the sine of the angle
-        displace_x = np.sin(angle_rad) * width[trial_index][0]/2
-        displace_y = -1*np.cos(angle_rad) * width[trial_index][1]/2
-        center_position[trial_index] = [leading_position[trial_index][0]+displace_x,
-                                        leading_position[trial_index][1]+displace_y]
+        displace_x = sf * np.cos(direction_rad) * width[trial_index][0]/2
+        displace_y = sf * np.sin(direction_rad) * width[trial_index][1]/2
+        center_position[trial_index] = [leading_position[trial_index][0] - displace_x,
+                                        leading_position[trial_index][1] - displace_y]
         # calculate center phase in order to keep the phase of the leading edge constant
         # across changes in width
-        leading_edge_phase = 2*np.pi*width[trial_index]
-        center_phase[trial_index] = 2*np.pi - leading_edge_phase
-        center_phase[trial_index] = center_phase[trial_index].tolist()
-
+        displace_phase_x = 2*np.pi * sf * np.cos(direction_rad) * width[trial_index][0]/2
+        displace_phase_x = np.sin(ori_rad) * (displace_phase_x % (2*np.pi))
+        displace_phase_y = 2*np.pi * sf * np.sin(direction_rad) * width[trial_index][1]/2
+        displace_phase_y = np.cos(ori_rad) * (displace_phase_y % (2 * np.pi))
+        center_phase[trial_index] = leading_phase[trial_index] + displace_phase_x - displace_phase_y
+        # breakpoint()
     return center_position, center_phase
 
 

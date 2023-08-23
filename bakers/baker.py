@@ -36,7 +36,7 @@ def check_flags(tuning_functions, default_stim):
         # missing_values = [getattr(default_stim, param) for param in missing_list]
         current_default.extend([[param, getattr(default_stim, param.replace('-', ''))[0]] for param in missing_list])
         tuning_functions[index]['default'] = current_default
-        # breakpoint()
+
     return tuning_functions
 
 
@@ -63,13 +63,21 @@ def combine_config_strings(config_list, flag_list):
                 current_config = current_config.replace(" ","")
                 if current_config:
                     var_config += current_config
+            # print(f"tc_index = {tc_index}")
+            # numbers = re.findall(r'\d+\.\d+|\d+', current_config)
+            # count = len(numbers)
+            # print(f" {flag} has {count} numbers and {count / var_length[flag_index]} elements")
+            # breakpoint()
 
         print(f'var_config =  {var_config}')
+        # numbers = re.findall(r'\d+\.\d+|\d+', var_config)
+        # count = len(numbers)
+        # print(f" Final Count: {flag} has {count} numbers and {count/var_length[flag_index]} elements")
+        # breakpoint()
 
         if var_config != '':
             var_config = ' ' + var_config
             full_config += var_config
-
     # full_config += ' "'
     return full_config
 
@@ -108,6 +116,7 @@ def randomize_trials(input_string, condition_string, var_list, num_trials):
 
     indices = np.random.permutation(num_trials)
     condition_string = [condition_string[i] for i in indices]
+
     for flag in flag_values:
         print(f"current flag  = {flag}")
         print(f"flag_values =  {flag_values[flag]}")
@@ -115,11 +124,8 @@ def randomize_trials(input_string, condition_string, var_list, num_trials):
         flag_values[flag] = [flag_values[flag][i] for i in indices]
         flag_values[flag] = flatten_list(flag_values[flag])
 
-
-
     # Create a new string with randomized flag-value pairs
     new_string = '" '
-
     for flag in flag_values:
         values_list = flag_values[flag]
         values_str = ', '.join(item for item in values_list)
@@ -185,10 +191,10 @@ class Stimulus:
         self.A = kwargs.get('A', [[5.0], 1])
         self.S = kwargs.get('S', [[1.0], 1])
         self.T = kwargs.get('T', [[5.0], 1])
-        self.O = kwargs.get('0', [[0], 1])
+        self.O = kwargs.get('0', [[150], 1])
         self.P = kwargs.get('P', [[0.0], 1])
         self.Z = kwargs.get('Z', [[0, 0], 2])
-        self.sweep = kwargs.get('sweep', [[1.0, 0.0, 5.0], 3])
+        self.sweep = kwargs.get('sweep', [[1.0, 0.0, 0], 3])
         self.wh = kwargs.get('wh', [[5.0, 5.0], 2])
 
 
@@ -245,16 +251,14 @@ class TuningFunction:
         # breakpoint()
 
     def generate_config_string(self):
-
+        n = self.num_trials
         for element_id in range(len(self.combo_list[0])):
             new_list = [element[element_id] for element in self.combo_list]
             if isinstance(new_list[0], list):
                 new_list = flatten_list(new_list)
             result_string = ', '.join("{:.2f}".format(item) for item in new_list)
             result_string = result_string.replace(" ", "")
-            n = len(new_list)
             self.config_string += f"{self.tuning_type[element_id]} {result_string} "
-        # breakpoint()
         if self.default_params is not None:
 
             for iv_index in range(len(self.default_params)):

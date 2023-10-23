@@ -1,0 +1,1 @@
+Package to analyze LFP data.

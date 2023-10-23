@@ -8,6 +8,11 @@ class channel_info:
         self.type = kwargs.get('type', -99)
         self.label = kwargs.get('label', ' ')
 
+class marker_data:
+    def __init__(self):
+        self.times = []
+        self.markers =[]
+
 def createWrapper():
     # load CED lib
     # ced_lib = ct.LibraryLoader(ct.WinDLL).LoadLibrary(
@@ -160,6 +165,7 @@ def open_file(file_name, ced_lib):
 
     
     file_name= file_name.encode('utf-8')
+    # breakpoint()
     fhand = ced_lib.S64Open(file_name)
 
     return fhand
@@ -252,10 +258,9 @@ def find_channel(all_channels, target_label):
     return channel_index
 
 def load_marker(fhand, channel_number, ced_lib, to_chr=True):
-
+    marker_info = marker_data()
     max_events = 1000
     pData_array = (S64Marker * max_events)()
-    maker_info =[]
     exit_flag = False
     start_tick = 0
     time_base = ced_lib.S64GetTimeBase(fhand)
@@ -270,21 +275,22 @@ def load_marker(fhand, channel_number, ced_lib, to_chr=True):
                 current_marker['code'] = chr(pData_array[index].m_Code1)
             else:
                 current_marker['code'] = pData_array[index].m_Code1
-            maker_info.append(current_marker)
+            marker_info.times.append(current_marker['time'])
+            marker_info.markers.append(current_marker['code'])
         if n < max_events:
             exit_flag = True
         else:
             start_tick = pData_array[-1].m_Time + 1
-        # breakpoint()
-    return maker_info
+    return marker_info
 
 def load_text(fhand, channel_number, ced_lib):
+
+    text_info = marker_data()
     max_events = 1000
     pData_array = S64Marker()
     maxTimeTicks = ced_lib.S64ChanMaxTime(fhand, channel_number)
     # Create a buffer to hold the text (adjust the buffer size as necessary)
     
-    text_info =[]
     exit_flag = False
     start_tick = 0
     time_base = ced_lib.S64GetTimeBase(fhand)
@@ -308,7 +314,8 @@ def load_text(fhand, channel_number, ced_lib):
 
         # get the text
         current_marker['text'] = text_buffer.decode('utf-8').rstrip('\x00')
-        text_info.append(current_marker)
+        text_info.times.append(current_marker['time'])
+        text_info.markers.append(current_marker['text'])
         # print(f"start tick = {start_tick}, max tick  = {maxTimeTicks}, text = {current_marker['text']}")
         if n < 0:
             exit_flag = True
@@ -319,43 +326,43 @@ def load_text(fhand, channel_number, ced_lib):
     return text_info
 
 def load_level_data(fhand, channel_number, ced_lib):
-    #S64ReadLevels
+    
+    level_data = {}
     time_base = ced_lib.S64GetTimeBase(fhand)
     max_events = 10000
     exit_flag= False
     start_tick=0
-    all_times = []
-    all_levels = []
+    level_data['times'] = []
     first_level = ct.c_int()
     initial_level = None
     while not exit_flag:
         times = (ct.c_longlong * max_events)() 
         n = ced_lib.S64ReadLevels(fhand, channel_number, times, max_events, start_tick, -1, ct.byref(first_level))
-        all_times.extend(times[0:n])
+        level_data['times'].extend(times[0:n])
         if n < max_events:
             exit_flag = True
         else:
             start_tick = times(-1)+1
         if start_tick == 0:
             initial_level = first_level
-    all_times = np.array(all_times)
-    all_times = all_times * time_base
+    level_data['times'] = np.array(level_data['times'])
+    level_data['times']  = level_data['times']  * time_base
 
     # given that the initial value of the level channel = initial_value, then all the even index locations [0, 2, 4, etc]
     # will != initial_value. For whatever reason, (high to low  = 1) and (low to high = 0). We want the opposite
-    n = all_times.shape[0]
-    all_levels = np.ones(n, dtype=int)
+    n = level_data['times'].shape[0]
+    level_data['levels'] = np.ones(n, dtype=int)
     even_values = np.arange(0,n,2)
     odd_values = np.arange(1,n,2)
     if initial_level.value == 1:
-        all_levels[even_values] = 0
-        all_levels[odd_values] = 1
+        level_data['levels'] [even_values] = 0
+        level_data['levels'] [odd_values] = 1
     else:
-        all_levels[even_values] = 1
-        all_levels[odd_values] = 0
-    return all_times, all_levels
-    # MATINT_API int S64ReadLevels(const int nFid, const int nChan, long long *pData, int nMax,
-    #     const long long tFrom, const long long tTo, int* nLevel);
+        level_data['levels'] [even_values] = 1
+        level_data['levels'] [odd_values] = 0
+
+    return level_data
+
 
 def load_continuous(fhand, channel_number, ced_lib):
     maxTimeTicks = ced_lib.S64ChanMaxTime(fhand, channel_number) # total clock ticks
@@ -376,4 +383,4 @@ def load_continuous(fhand, channel_number, ced_lib):
     except:
         print(f"could not read continuous data from channel {channel_number}, maxTimeticks = {maxTimeTicks} ")
     
-    return continuous_data, continuous_time
+    return continuous_data, continuous_time, lfp_Fs

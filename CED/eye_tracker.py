@@ -1,6 +1,23 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+class eye_tracker_data:
+    def __init__(self=[], time=[], x=[], y=[], file_id=[], channel=[], fs=[], filter=None):
+        self.time = time
+        self.x = x
+        self.x = y
+        self.file_id = file_id
+        self.channel = channel
+        self.fs = fs
+        self.filter = filter
+class pupil_data:
+    def __init__(self, size=[], time=[], status=[]):
+        self.size = size
+        self.time = time
+        self.status = status
+
+
+
 def eydexp(filename):
     s = {}
     s['filename'] = filename
@@ -114,11 +131,10 @@ def printSummary(s):
 
 def synch_pupil_data(eyd, smr):
 
-    code_values, time_values = zip(*[(x['code'], x['time']) for x in smr])
-
     # Converting the extracted lists to numpy arrays
-    code_array = np.array(code_values)
-    time_array = np.array(time_values)
+
+    code_array = np.array(smr.markers)
+    time_array = np.array(smr.times)
     
     pupil_markers = [101, 102, 103, 104, 105, 106, 107]
     valid_code = np.isin(code_array, pupil_markers)
